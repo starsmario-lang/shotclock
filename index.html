@@ -180,9 +180,9 @@ function playWhistle(){
 
     const gain=ctx.createGain();
 
-    osc.frequency.value=1000;
+    osc.frequency.value=1200;
 
-    gain.gain.value=0.4;
+    gain.gain.value=1;
 
     osc.connect(gain);
 
@@ -192,10 +192,10 @@ function playWhistle(){
 
     gain.gain.exponentialRampToValueAtTime(
         0.001,
-        ctx.currentTime+1.5
+        ctx.currentTime+2.5
     );
 
-    osc.stop(ctx.currentTime+1.5);
+    osc.stop(ctx.currentTime+2.5);
 }
 
 
