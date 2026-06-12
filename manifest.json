@@ -1,0 +1,9 @@
+{
+  "name": "Training Shot Clock",
+  "short_name": "ShotClock",
+  "start_url": ".",
+  "display": "fullscreen",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "icons": []
+}
