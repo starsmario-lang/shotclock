@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="hr">
 <head>
@@ -46,13 +45,6 @@ body{
     background:#b00020;
 }
 
-.bigButton{
-    font-size:48px;
-    font-weight:bold;
-    cursor:pointer;
-    user-select:none;
-}
-
 .timeValue{
     font-size:64px;
     font-weight:bold;
@@ -72,7 +64,6 @@ body{
     font-weight:bold;
     min-width:180px;
     text-align:center;
-    cursor:pointer;
     user-select:none;
 }
 
@@ -85,35 +76,55 @@ body{
 
 <div id="timerRow" class="row paused">
 
-    <button class="smallBtn" onclick="event.stopPropagation();adjustMain(-1)">-</button>
+    <button class="smallBtn"
+        onclick="event.stopPropagation();adjustMain(-1)">
+        -
+    </button>
 
     <div id="timeDisplay" class="timeValue">0</div>
 
-    <button class="smallBtn" onclick="event.stopPropagation();adjustMain(1)">+</button>
+    <button class="smallBtn"
+        onclick="event.stopPropagation();adjustMain(1)">
+        +
+    </button>
 
 </div>
 
 <!-- RED 2 -->
 
-<div class="row">
+<div class="row"
+     onclick="startPreset(0)">
 
-    <button class="smallBtn" onclick="adjustPreset(0,-1)">-</button>
+    <button class="smallBtn"
+        onclick="event.stopPropagation();adjustPreset(0,-1)">
+        -
+    </button>
 
-    <div id="preset0" class="presetValue" onclick="startPreset(0)">16</div>
+    <div id="preset0" class="presetValue">16</div>
 
-    <button class="smallBtn" onclick="adjustPreset(0,1)">+</button>
+    <button class="smallBtn"
+        onclick="event.stopPropagation();adjustPreset(0,1)">
+        +
+    </button>
 
 </div>
 
 <!-- RED 3 -->
 
-<div class="row">
+<div class="row"
+     onclick="startPreset(1)">
 
-    <button class="smallBtn" onclick="adjustPreset(1,-1)">-</button>
+    <button class="smallBtn"
+        onclick="event.stopPropagation();adjustPreset(1,-1)">
+        -
+    </button>
 
-    <div id="preset1" class="presetValue" onclick="startPreset(1)">8</div>
+    <div id="preset1" class="presetValue">8</div>
 
-    <button class="smallBtn" onclick="adjustPreset(1,1)">+</button>
+    <button class="smallBtn"
+        onclick="event.stopPropagation();adjustPreset(1,1)">
+        +
+    </button>
 
 </div>
 
@@ -122,12 +133,11 @@ body{
 let presets=[16,8];
 
 let currentTime=0;
-
 let running=false;
-
 let timer=null;
 
-
+let sirenContext=null;
+let sirenOscillators=[];
 
 function updateDisplay(){
 
@@ -137,77 +147,140 @@ function updateDisplay(){
 
     row.classList.remove("running","paused");
 
-    row.classList.add(running ? "running" : "paused");
+    row.classList.add(
+        running ? "running" : "paused"
+    );
 }
 
+function stopSiren(){
 
+    try{
+
+        sirenOscillators.forEach(o=>{
+
+            try{
+                o.stop();
+            }catch(e){}
+        });
+
+    }catch(e){}
+
+    sirenOscillators=[];
+
+    if(sirenContext){
+
+        try{
+            sirenContext.close();
+        }catch(e){}
+
+        sirenContext=null;
+    }
+}
 
 function speakGerman(text){
 
     speechSynthesis.cancel();
 
-    const utter=new SpeechSynthesisUtterance(text);
+    const utter=
+        new SpeechSynthesisUtterance(text);
 
     utter.lang="de-DE";
 
     speechSynthesis.speak(utter);
 }
 
-
-
-function numberToGerman(n){
-
-    const map={
-        1:"eins",
-        2:"zwei",
-        3:"drei",
-        4:"vier",
-        5:"fünf",
-        8:"acht",
-        16:"sechzehn"
-    };
-
-    return map[n] || String(n);
-}
-
-
-
 function playWhistle(){
 
-    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    stopSiren();
 
-    const osc=ctx.createOscillator();
+    sirenContext=
+        new(window.AudioContext||
+            window.webkitAudioContext)();
 
-    const gain=ctx.createGain();
+    const frequencies=[
+        1200,
+        1600,
+        2000
+    ];
 
-    osc.frequency.value=1200;
+    frequencies.forEach(freq=>{
 
-    gain.gain.value=1;
+        const osc=
+            sirenContext.createOscillator();
 
-    osc.connect(gain);
+        const gain=
+            sirenContext.createGain();
 
-    gain.connect(ctx.destination);
+        osc.type="square";
 
-    osc.start();
+        osc.frequency.value=freq;
 
-    gain.gain.exponentialRampToValueAtTime(
-        0.001,
-        ctx.currentTime+2.5
-    );
+        gain.gain.value=0.35;
 
-    osc.stop(ctx.currentTime+2.5);
+        osc.connect(gain);
+        gain.connect(
+            sirenContext.destination
+        );
+
+        osc.start();
+
+        gain.gain.setValueAtTime(
+            0.35,
+            sirenContext.currentTime
+        );
+
+        gain.gain.linearRampToValueAtTime(
+            0.55,
+            sirenContext.currentTime+0.15
+        );
+
+        gain.gain.linearRampToValueAtTime(
+            0.25,
+            sirenContext.currentTime+0.30
+        );
+
+        gain.gain.linearRampToValueAtTime(
+            0.55,
+            sirenContext.currentTime+0.45
+        );
+
+        gain.gain.exponentialRampToValueAtTime(
+            0.001,
+            sirenContext.currentTime+2.5
+        );
+
+        osc.stop(
+            sirenContext.currentTime+2.5
+        );
+
+        sirenOscillators.push(osc);
+
+    });
 }
-
-
 
 function stopEverything(){
 
     clearInterval(timer);
 
     speechSynthesis.cancel();
+
+    stopSiren();
 }
 
+function shouldSpeakNumber(n,startValue){
 
+    if(n<=0) return false;
+
+    if(n<=5) return true;
+
+    if(n===8 && startValue>8)
+        return true;
+
+    if(n===12 && startValue>12)
+        return true;
+
+    return false;
+}
 
 function startPreset(index){
 
@@ -219,16 +292,16 @@ function startPreset(index){
 
     updateDisplay();
 
-    speakGerman(numberToGerman(currentTime));
+    speakGerman(String(currentTime));
 
     timer=setInterval(tick,1000);
 }
 
-
-
 function tick(){
 
     if(!running) return;
+
+    const startValue=currentTime;
 
     currentTime--;
 
@@ -238,10 +311,18 @@ function tick(){
 
     updateDisplay();
 
-    if(currentTime>=1 && currentTime<=5){
-
-        speakGerman(numberToGerman(currentTime));
-
+    if(
+        shouldSpeakNumber(
+            currentTime,
+            presets[0]===startValue ||
+            presets[1]===startValue
+                ? startValue
+                : 999
+        )
+    ){
+        speakGerman(
+            String(currentTime)
+        );
     }
 
     if(currentTime===0){
@@ -250,35 +331,43 @@ function tick(){
 
         updateDisplay();
 
-        stopEverything();
+        clearInterval(timer);
+
+        speechSynthesis.cancel();
 
         playWhistle();
     }
 }
 
-
-
 function adjustMain(delta){
 
-    currentTime=Math.max(0,currentTime+delta);
+    currentTime=
+        Math.max(
+            0,
+            currentTime+delta
+        );
 
     updateDisplay();
 }
 
-
-
 function adjustPreset(index,delta){
 
-    presets[index]=Math.max(1,presets[index]+delta);
+    presets[index]=
+        Math.max(
+            1,
+            presets[index]+delta
+        );
 
     document.getElementById(
-        index===0 ? "preset0":"preset1"
-    ).innerText=presets[index];
+        index===0
+        ? "preset0"
+        : "preset1"
+    ).innerText=
+        presets[index];
 }
 
-
-
-document.getElementById("timerRow")
+document
+.getElementById("timerRow")
 .addEventListener("click",()=>{
 
     if(currentTime===0){
@@ -291,17 +380,15 @@ document.getElementById("timerRow")
 
 });
 
-
-
 updateDisplay();
 
-
-
 if("serviceWorker" in navigator){
-    navigator.serviceWorker.register("sw.js");
+
+    navigator.serviceWorker
+    .register("sw.js");
 }
 
 </script>
 
 </body>
-</html>
+    </html>
