@@ -133,6 +133,7 @@ body{
 let presets=[16,8];
 
 let currentTime=0;
+let startValue=0;
 let running=false;
 let timer=null;
 
@@ -193,71 +194,66 @@ function playWhistle(){
 
     stopSiren();
 
-    sirenContext=
-        new(window.AudioContext||
+    sirenContext =
+        new(window.AudioContext ||
             window.webkitAudioContext)();
 
-    const frequencies=[
+    const osc =
+        sirenContext.createOscillator();
+
+    const gain =
+        sirenContext.createGain();
+
+    osc.type="square";
+
+    osc.connect(gain);
+    gain.connect(sirenContext.destination);
+
+    gain.gain.value=0.9;
+
+    osc.start();
+
+    osc.frequency.setValueAtTime(
         1200,
-        1600,
-        2000
-    ];
+        sirenContext.currentTime
+    );
 
-    frequencies.forEach(freq=>{
+    osc.frequency.linearRampToValueAtTime(
+        1700,
+        sirenContext.currentTime+0.4
+    );
 
-        const osc=
-            sirenContext.createOscillator();
+    osc.frequency.linearRampToValueAtTime(
+        1200,
+        sirenContext.currentTime+0.8
+    );
 
-        const gain=
-            sirenContext.createGain();
+    osc.frequency.linearRampToValueAtTime(
+        1700,
+        sirenContext.currentTime+1.2
+    );
 
-        osc.type="square";
+    osc.frequency.linearRampToValueAtTime(
+        1200,
+        sirenContext.currentTime+1.6
+    );
 
-        osc.frequency.value=freq;
+    osc.frequency.linearRampToValueAtTime(
+        1700,
+        sirenContext.currentTime+2.0
+    );
 
-        gain.gain.value=0.35;
+    gain.gain.exponentialRampToValueAtTime(
+        0.001,
+        sirenContext.currentTime+2.5
+    );
 
-        osc.connect(gain);
-        gain.connect(
-            sirenContext.destination
-        );
+    osc.stop(
+        sirenContext.currentTime+2.5
+    );
 
-        osc.start();
-
-        gain.gain.setValueAtTime(
-            0.35,
-            sirenContext.currentTime
-        );
-
-        gain.gain.linearRampToValueAtTime(
-            0.55,
-            sirenContext.currentTime+0.15
-        );
-
-        gain.gain.linearRampToValueAtTime(
-            0.25,
-            sirenContext.currentTime+0.30
-        );
-
-        gain.gain.linearRampToValueAtTime(
-            0.55,
-            sirenContext.currentTime+0.45
-        );
-
-        gain.gain.exponentialRampToValueAtTime(
-            0.001,
-            sirenContext.currentTime+2.5
-        );
-
-        osc.stop(
-            sirenContext.currentTime+2.5
-        );
-
-        sirenOscillators.push(osc);
-
-    });
+    sirenOscillators=[osc];
 }
-
 function stopEverything(){
 
     clearInterval(timer);
@@ -287,6 +283,7 @@ function startPreset(index){
     stopEverything();
 
     currentTime=presets[index];
+    startValue=currentTime;
 
     running=true;
 
@@ -301,8 +298,6 @@ function tick(){
 
     if(!running) return;
 
-    const startValue=currentTime;
-
     currentTime--;
 
     if(currentTime<0){
@@ -312,17 +307,11 @@ function tick(){
     updateDisplay();
 
     if(
-        shouldSpeakNumber(
-            currentTime,
-            presets[0]===startValue ||
-            presets[1]===startValue
-                ? startValue
-                : 999
-        )
+        (startValue>12 && currentTime===12) ||
+        (startValue>8 && currentTime===8) ||
+        (currentTime<=5 && currentTime>=1)
     ){
-        speakGerman(
-            String(currentTime)
-        );
+        speakGerman(String(currentTime));
     }
 
     if(currentTime===0){
@@ -338,7 +327,6 @@ function tick(){
         playWhistle();
     }
 }
-
 function adjustMain(delta){
 
     currentTime=
